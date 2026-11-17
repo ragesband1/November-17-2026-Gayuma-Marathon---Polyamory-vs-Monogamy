@@ -1,0 +1,1189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gayuma Marathon - Polyamory vs Monogamy</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #130b25;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+header {
+    background: linear-gradient(120deg,#6b159c,#e52a91);
+    padding: 22px 10px;
+}
+
+h1 { margin: 5px; }
+
+.stats {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+}
+
+.stat {
+    background: #302044;
+    border: 1px solid #c36bff;
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 100px;
+}
+
+.stat span {
+    display: block;
+    color: #ff75d2;
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+#game {
+    display: block;
+    width: 100%;
+    max-width: 750px;
+    height: auto;
+    margin: 10px auto;
+    border: 4px solid #b54bff;
+    border-radius: 12px;
+    background: #211832;
+}
+
+#message {
+    min-height: 35px;
+    padding: 10px;
+    color: #ff79d9;
+    font-weight: bold;
+}
+
+button {
+    border: 1px solid #e68aff;
+    border-radius: 10px;
+    background: #62258e;
+    color: white;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+}
+
+button:hover {
+    background: #e02d9b;
+}
+
+.actions {
+    margin: 12px;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: repeat(3,65px);
+    justify-content: center;
+    gap: 7px;
+    margin: 15px;
+}
+
+.controls button {
+    height: 55px;
+    padding: 5px;
+    font-size: 25px;
+}
+
+#fireButton {
+    background: #d62d78;
+    min-width: 150px;
+    font-weight: bold;
+}
+
+.instructions, #history {
+    max-width: 750px;
+    margin: 20px auto;
+    padding: 18px;
+    background: #302044;
+    border-radius: 12px;
+    line-height: 1.8;
+}
+
+.history-entry {
+    padding: 8px;
+    border-bottom: 1px solid #72528d;
+}
+
+footer {
+    padding: 20px;
+    color: #bba2d0;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>💜 GAYUMA MARATHON 💜</h1>
+    <h3>POLYAMORY VS MONOGAMY MAZE</h3>
+    <p>100 LEVELS • COLLECT ALL • ESCAPE!</p>
+</header>
+
+<div class="stats">
+    <div class="stat">LEVEL<span id="level">1</span></div>
+    <div class="stat">LIVES<span id="lives">3</span></div>
+    <div class="stat">POINTS<span id="points">0</span></div>
+    <div class="stat">JOWAS<span id="jowas">0/0</span></div>
+    <div class="stat">AMMO<span id="ammo">∞</span></div>
+</div>
+
+<canvas id="game" width="750" height="550"></canvas>
+
+<div id="message">Press START GAME to begin!</div>
+
+<div class="actions">
+    <button onclick="startGame()">▶ START GAME</button>
+    <button onclick="restartLevel()">↻ RESTART LEVEL</button>
+    <button onclick="toggleVoice()" id="voiceButton">🔊 VOICE ON</button>
+</div>
+
+<h3>🖱️ MOUSE HOVER DIRECTIONS</h3>
+
+<div class="controls">
+    <div></div>
+    <button onmouseenter="startMoving('up')" onmouseleave="stopMoving()">⬆</button>
+    <div></div>
+
+    <button onmouseenter="startMoving('left')" onmouseleave="stopMoving()">⬅</button>
+    <button onmouseenter="startMoving('down')" onmouseleave="stopMoving()">⬇</button>
+    <button onmouseenter="startMoving('right')" onmouseleave="stopMoving()">➡</button>
+</div>
+
+<div class="actions">
+    <button id="fireButton" onclick="fire()">🔫 FIRE! (SPACEBAR)</button>
+</div>
+
+<div class="instructions">
+    <h3>🎮 GAME RULES</h3>
+    💜 Polyamory = Main Character<br>
+    😈 Mono = Enemies<br>
+    💗 Jowas = Collectible Points<br>
+    👩 Girlfriends = Collectible Points<br>
+    🏝️ Poly Island = Safe Zone<br>
+    🚪 Exit = Escape Point<br>
+    🔫 Spacebar = Shoot Mono Enemies<br><br>
+
+    <b>COLLECT ALL JOWAS AND GIRLFRIENDS!</b><br>
+    Wall collision = -1 Life<br>
+    Mono collision = -1 Life<br>
+    Ex with Third Party = Instant Game Over<br>
+    Defeat ordinary Mono = +50 Points<br>
+    Poly Island = Safe from Mono enemies<br>
+    Collectibles must be completed before escaping.
+    <br><br>
+    <b>🔊 SOUND AND VOICE</b><br>
+    Shooting • Enemy Defeated • Collision • Collection<br>
+    Level Announcements • Warnings • Victory Voice
+</div>
+
+<div id="history">
+    <h3>🏆 VICTORY HISTORY</h3>
+    <div id="historyList">No completed levels yet.</div>
+</div>
+
+<footer>GAYUMA MARATHON © 2026</footer>
+
+<script>
+"use strict";
+
+// ====================================
+// GAME SETTINGS
+// ====================================
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const TILE = 50;
+const COLS = 15;
+const ROWS = 11;
+
+let maze = [];
+let player = {x:1,y:1};
+
+let enemies = [];
+let partners = [];
+let islands = [];
+let bullets = [];
+
+let exit = {x:13,y:9};
+
+let level = 1;
+let lives = 3;
+let points = 0;
+
+let collected = 0;
+let totalJowas = 0;
+
+let playing = false;
+let ended = false;
+let direction = null;
+let lastDirection = "right";
+
+let movementTimer = null;
+let enemyTimer = null;
+let bulletTimer = null;
+let transitionTimer = null;
+
+let voiceEnabled = true;
+let audioContext = null;
+let history = [];
+
+// ====================================
+// SOUND EFFECTS
+// ====================================
+
+function initAudio() {
+    const AudioClass =
+        window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioClass) return;
+
+    if (!audioContext) {
+        audioContext = new AudioClass();
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+}
+
+function sound(frequency, duration, type, volume) {
+    if (!audioContext) return;
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = type || "sine";
+    oscillator.frequency.value = frequency;
+
+    gain.gain.setValueAtTime(
+        volume || 0.08,
+        audioContext.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + duration);
+}
+
+function playShoot() {
+    sound(750, 0.08, "square", 0.07);
+    setTimeout(() => sound(350, 0.08, "square", 0.04), 50);
+}
+
+function playCollect() {
+    sound(500, 0.12, "sine", 0.08);
+    setTimeout(() => sound(800, 0.2, "sine", 0.08), 100);
+}
+
+function playHit() {
+    sound(130, 0.35, "sawtooth", 0.1);
+}
+
+function playDefeat() {
+    sound(600, 0.12, "triangle", 0.09);
+    setTimeout(() => sound(300, 0.2, "triangle", 0.07), 100);
+}
+
+function playVictory() {
+    sound(500, 0.2, "sine");
+    setTimeout(() => sound(650, 0.2, "sine"), 180);
+    setTimeout(() => sound(850, 0.4, "sine"), 360);
+}
+
+// ====================================
+// AI-STYLE VOICE ANNOUNCEMENTS
+// ====================================
+
+function speak(text) {
+    if (!voiceEnabled || !("speechSynthesis" in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    utterance.lang = "en-US";
+    utterance.rate = 1.05;
+    utterance.pitch = 1.15;
+    utterance.volume = 1;
+
+    const voices = window.speechSynthesis.getVoices();
+
+    const preferred = voices.find(v =>
+        /Google US English|Samantha|Microsoft.*English/i.test(v.name)
+    );
+
+    if (preferred) {
+        utterance.voice = preferred;
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
+
+function toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+
+    document.getElementById("voiceButton").textContent =
+        voiceEnabled ? "🔊 VOICE ON" : "🔇 VOICE OFF";
+
+    if (!voiceEnabled && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+
+    if (voiceEnabled) {
+        speak("Voice announcements activated!");
+    }
+}
+
+// ====================================
+// DISPLAY
+// ====================================
+
+function updateStats() {
+    document.getElementById("level").textContent = level;
+    document.getElementById("lives").textContent = lives;
+    document.getElementById("points").textContent = points;
+
+    document.getElementById("jowas").textContent =
+        collected + "/" + totalJowas;
+}
+
+function message(text) {
+    document.getElementById("message").textContent = text;
+}
+
+// ====================================
+// MAZE GENERATOR
+// ====================================
+
+function generateMaze() {
+    maze = [];
+
+    for (let y = 0; y < ROWS; y++) {
+        maze[y] = [];
+
+        for (let x = 0; x < COLS; x++) {
+            maze[y][x] = 1;
+        }
+    }
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+
+        return array;
+    }
+
+    function carve(x, y) {
+        maze[y][x] = 0;
+
+        const dirs = shuffle([
+            [0,-2],[0,2],[-2,0],[2,0]
+        ]);
+
+        for (const [dx,dy] of dirs) {
+            const nx = x + dx;
+            const ny = y + dy;
+
+            if (
+                nx > 0 &&
+                nx < COLS - 1 &&
+                ny > 0 &&
+                ny < ROWS - 1 &&
+                maze[ny][nx] === 1
+            ) {
+                maze[y + dy/2][x + dx/2] = 0;
+                carve(nx,ny);
+            }
+        }
+    }
+
+    carve(1,1);
+
+    maze[9][13] = 0;
+    maze[9][12] = 0;
+    maze[8][13] = 0;
+}
+
+function openTile(x,y) {
+    return (
+        x >= 0 &&
+        x < COLS &&
+        y >= 0 &&
+        y < ROWS &&
+        maze[y][x] === 0
+    );
+}
+
+// ====================================
+// SAFE ISLANDS
+// ====================================
+
+function onIsland(x,y) {
+    return islands.some(
+        island => island.x === x && island.y === y
+    );
+}
+
+// ====================================
+// RANDOM POSITIONS
+// ====================================
+
+function randomPosition() {
+    for (let attempt = 0; attempt < 2000; attempt++) {
+        const x = 1 + Math.floor(Math.random() * 13);
+        const y = 1 + Math.floor(Math.random() * 9);
+
+        if (
+            openTile(x,y) &&
+            !(x === 1 && y === 1) &&
+            !(x === exit.x && y === exit.y) &&
+            !islands.some(p => p.x === x && p.y === y) &&
+            !partners.some(p => p.x === x && p.y === y) &&
+            !enemies.some(p => p.x === x && p.y === y)
+        ) {
+            return {x:x,y:y};
+        }
+    }
+
+    return {x:13,y:7};
+}
+
+// ====================================
+// LEVEL SETUP
+// ====================================
+
+function setupLevel() {
+    generateMaze();
+
+    player = {x:1,y:1};
+
+    enemies = [];
+    partners = [];
+    islands = [];
+    bullets = [];
+
+    collected = 0;
+
+    for (let i = 0; i < 3; i++) {
+        islands.push(randomPosition());
+    }
+
+    totalJowas = Math.min(5 + level,30);
+
+    for (let i = 0; i < totalJowas; i++) {
+        const pos = randomPosition();
+
+        partners.push({
+            x:pos.x,
+            y:pos.y,
+            type:Math.random() < 0.5 ? "jowa" : "girlfriend"
+        });
+    }
+
+    const enemyCount = Math.min(
+        2 + Math.floor(level / 3),
+        12
+    );
+
+    for (let i = 0; i < enemyCount; i++) {
+        const pos = randomPosition();
+
+        enemies.push({
+            x:pos.x,
+            y:pos.y,
+            special:level >= 5 && i === 0
+        });
+    }
+
+    draw();
+    updateStats();
+
+    message("LEVEL " + level + "! COLLECT ALL JOWAS!");
+
+    speak("Level " + level + "! Collect all girlfriends and jowas. Avoid the Mono enemies!");
+}
+
+// ====================================
+// DRAW GAME
+// ====================================
+
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // MAZE
+
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            ctx.fillStyle = maze[y][x] === 1
+                ? "#513568"
+                : "#211832";
+
+            ctx.fillRect(
+                x*TILE,
+                y*TILE,
+                TILE-2,
+                TILE-2
+            );
+        }
+    }
+
+    // ISLANDS
+
+    islands.forEach(island => {
+        ctx.font = "30px Arial";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            "🏝️",
+            island.x*TILE+25,
+            island.y*TILE+36
+        );
+    });
+
+    // PARTNERS
+
+    partners.forEach(p => {
+        ctx.font = "27px Arial";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            p.type === "jowa" ? "💗" : "👩",
+            p.x*TILE+25,
+            p.y*TILE+35
+        );
+    });
+
+    // ENEMIES
+
+    enemies.forEach(e => {
+        ctx.font = "29px Arial";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            e.special ? "💔" : "😈",
+            e.x*TILE+25,
+            e.y*TILE+35
+        );
+    });
+
+    // BULLETS
+
+    bullets.forEach(b => {
+        ctx.fillStyle = "#ffed54";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            b.x*TILE+25,
+            b.y*TILE+25,
+            9,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+        ctx.strokeStyle = "#ff8b23";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+
+    // EXIT
+
+    ctx.font = "32px Arial";
+    ctx.textAlign = "center";
+
+    ctx.fillText(
+        "🚪",
+        exit.x*TILE+25,
+        exit.y*TILE+36
+    );
+
+    // PLAYER
+
+    ctx.font = "34px Arial";
+
+    ctx.fillText(
+        "💜",
+        player.x*TILE+25,
+        player.y*TILE+36
+    );
+
+    ctx.textAlign = "left";
+}
+
+// ====================================
+// PLAYER MOVEMENT
+// ====================================
+
+function startMoving(dir) {
+    direction = dir;
+    lastDirection = dir;
+
+    if (!playing || ended) return;
+
+    clearInterval(movementTimer);
+
+    movePlayer();
+
+    movementTimer = setInterval(movePlayer,180);
+}
+
+function stopMoving() {
+    direction = null;
+
+    clearInterval(movementTimer);
+    movementTimer = null;
+}
+
+function movePlayer() {
+    if (!playing || ended || !direction) return;
+
+    let dx = 0;
+    let dy = 0;
+
+    if (direction === "up") dy = -1;
+    if (direction === "down") dy = 1;
+    if (direction === "left") dx = -1;
+    if (direction === "right") dx = 1;
+
+    const nx = player.x + dx;
+    const ny = player.y + dy;
+
+    // WALL COLLISION
+
+    if (!openTile(nx,ny)) {
+        lives--;
+
+        playHit();
+
+        message("💥 WALL COLLISION! -1 LIFE!");
+
+        speak("Warning! You hit a wall! One life lost!");
+
+        updateStats();
+
+        if (lives <= 0) {
+            gameOver("YOU LOST ALL YOUR LIVES!");
+        }
+
+        return;
+    }
+
+    // ENEMY COLLISION
+
+    const enemy = enemies.find(
+        e => e.x === nx && e.y === ny
+    );
+
+    if (enemy) {
+        if (enemy.special) {
+            gameOver("EX WITH THIRD PARTY! GAME OVER!");
+            return;
+        }
+
+        lives--;
+
+        const pos = randomPosition();
+
+        enemy.x = pos.x;
+        enemy.y = pos.y;
+
+        playHit();
+
+        message("MONO COLLISION! -1 LIFE!");
+
+        speak("Mono collision! One life lost!");
+
+        updateStats();
+
+        if (lives <= 0) {
+            gameOver("YOU LOST ALL YOUR LIVES!");
+        }
+
+        return;
+    }
+
+    player.x = nx;
+    player.y = ny;
+
+    // COLLECT JOWAS
+
+    const index = partners.findIndex(
+        p => p.x === nx && p.y === ny
+    );
+
+    if (index !== -1) {
+        const partner = partners[index];
+
+        partners.splice(index,1);
+
+        collected++;
+        points += 100;
+
+        playCollect();
+
+        message(
+            (partner.type === "jowa" ? "JOWA" : "GIRLFRIEND") +
+            " COLLECTED! +100 POINTS!"
+        );
+
+        speak("Collectible collected! One hundred points!");
+    }
+
+    // ISLAND
+
+    if (onIsland(nx,ny)) {
+        message("🏝️ POLY ISLAND! SAFE ZONE!");
+    }
+
+    // EXIT
+
+    if (nx === exit.x && ny === exit.y) {
+        if (partners.length === 0) {
+            finishLevel();
+            return;
+        }
+
+        message("COLLECT ALL JOWAS FIRST!");
+        speak("You need to collect all your jowas first!");
+    }
+
+    updateStats();
+    draw();
+}
+
+// ====================================
+// SPACEBAR FIRE SYSTEM
+// ====================================
+
+function fire() {
+    if (!playing || ended) return;
+
+    initAudio();
+
+    const directions = {
+        up:    {dx:0,dy:-1},
+        down:  {dx:0,dy:1},
+        left:  {dx:-1,dy:0},
+        right: {dx:1,dy:0}
+    };
+
+    const d = directions[lastDirection];
+
+    bullets.push({
+        x:player.x,
+        y:player.y,
+        dx:d.dx,
+        dy:d.dy,
+        distance:0
+    });
+
+    playShoot();
+
+    message("🔫 FIRE! SHOOTING!");
+    draw();
+}
+
+function updateBullets() {
+    if (!playing || ended) return;
+
+    bullets.forEach((bullet,index) => {
+        bullet.x += bullet.dx;
+        bullet.y += bullet.dy;
+        bullet.distance++;
+
+        // BULLET HITS WALL
+
+        if (!openTile(bullet.x,bullet.y)) {
+            bullets[index] = null;
+            return;
+        }
+
+        // BULLET HITS ENEMY
+
+        const enemyIndex = enemies.findIndex(
+            e => e.x === bullet.x && e.y === bullet.y
+        );
+
+        if (enemyIndex !== -1) {
+            const enemy = enemies[enemyIndex];
+
+            if (enemy.special) {
+                message("💔 SPECIAL EX! KEEP YOUR DISTANCE!");
+                speak("Danger! Special ex! Avoid this enemy!");
+                bullets[index] = null;
+                return;
+            }
+
+            enemies.splice(enemyIndex,1);
+
+            points += 50;
+
+            playDefeat();
+
+            message("😈 MONO DEFEATED! +50 POINTS!");
+
+            speak("Enemy defeated! Fifty bonus points!");
+
+            bullets[index] = null;
+
+            updateStats();
+            return;
+        }
+
+        // LIMIT BULLET RANGE
+
+        if (bullet.distance >= 6) {
+            bullets[index] = null;
+        }
+    });
+
+    bullets = bullets.filter(b => b !== null);
+
+    draw();
+}
+
+// ====================================
+// ENEMY MOVEMENT
+// ====================================
+
+function moveEnemies() {
+    if (!playing || ended) return;
+
+    enemies.forEach(enemy => {
+
+        if (onIsland(enemy.x,enemy.y)) return;
+
+        const options = [
+            {x:enemy.x+1,y:enemy.y},
+            {x:enemy.x-1,y:enemy.y},
+            {x:enemy.x,y:enemy.y+1},
+            {x:enemy.x,y:enemy.y-1}
+        ];
+
+        const available = options.filter(pos =>
+            openTile(pos.x,pos.y) &&
+            !onIsland(pos.x,pos.y)
+        );
+
+        if (available.length === 0) return;
+
+        available.sort((a,b) => {
+            const da =
+                Math.abs(a.x-player.x) +
+                Math.abs(a.y-player.y);
+
+            const db =
+                Math.abs(b.x-player.x) +
+                Math.abs(b.y-player.y);
+
+            return da-db;
+        });
+
+        const next = Math.random() < 0.7
+            ? available[0]
+            : available[Math.floor(Math.random()*available.length)];
+
+        // CATCH PLAYER
+
+        if (next.x === player.x && next.y === player.y) {
+            if (enemy.special) {
+                gameOver("EX WITH THIRD PARTY CAUGHT YOU!");
+                return;
+            }
+
+            lives--;
+
+            const pos = randomPosition();
+
+            enemy.x = pos.x;
+            enemy.y = pos.y;
+
+            playHit();
+
+            message("MONO CAUGHT YOU! -1 LIFE!");
+
+            speak("You have been caught! One life lost!");
+
+            if (lives <= 0) {
+                gameOver("YOU LOST ALL YOUR LIVES!");
+                return;
+            }
+        } else {
+            enemy.x = next.x;
+            enemy.y = next.y;
+        }
+    });
+
+    updateStats();
+    draw();
+}
+
+// ====================================
+// LEVEL COMPLETE
+// ====================================
+
+function finishLevel() {
+    playing = false;
+
+    stopMoving();
+
+    clearInterval(enemyTimer);
+    clearInterval(bulletTimer);
+
+    const bonus = level * 50;
+
+    points += bonus;
+
+    history.push({
+        level:level,
+        points:points,
+        jowas:collected
+    });
+
+    try {
+        localStorage.setItem(
+            "gayumaHistory",
+            JSON.stringify(history)
+        );
+    } catch(error) {
+        console.log("History storage unavailable.");
+    }
+
+    displayHistory();
+
+    playVictory();
+
+    updateStats();
+
+    if (level === 100) {
+        ended = true;
+
+        message("🏆 POLYAMORY WINS! ALL 100 LEVELS COMPLETED!");
+
+        speak("Congratulations! Polyamory wins! You completed all one hundred levels!");
+
+        return;
+    }
+
+    message(
+        "LEVEL " + level +
+        " COMPLETE! BONUS +" + bonus + " POINTS!"
+    );
+
+    speak("Level " + level + " completed! Excellent work!");
+
+    transitionTimer = setTimeout(() => {
+        if (ended) return;
+
+        level++;
+        lives = Math.min(lives+1,5);
+
+        setupLevel();
+
+        playing = true;
+
+        startTimers();
+
+    },2000);
+}
+
+// ====================================
+// GAME OVER
+// ====================================
+
+function gameOver(reason) {
+    playing = false;
+    ended = true;
+
+    stopMoving();
+
+    clearInterval(enemyTimer);
+    clearInterval(bulletTimer);
+    clearTimeout(transitionTimer);
+
+    playHit();
+
+    message(reason + " FINAL POINTS: " + points);
+
+    speak("Game over! " + reason + " Your final score is " + points + " points.");
+
+    updateStats();
+}
+
+// ====================================
+// TIMERS
+// ====================================
+
+function startTimers() {
+    clearInterval(enemyTimer);
+    clearInterval(bulletTimer);
+
+    const enemySpeed = Math.max(
+        350,
+        1000-level*5
+    );
+
+    enemyTimer = setInterval(moveEnemies,enemySpeed);
+
+    bulletTimer = setInterval(updateBullets,110);
+}
+
+// ====================================
+// START GAME
+// ====================================
+
+function startGame() {
+    initAudio();
+
+    stopMoving();
+
+    clearInterval(enemyTimer);
+    clearInterval(bulletTimer);
+    clearTimeout(transitionTimer);
+
+    level = 1;
+    lives = 3;
+    points = 0;
+
+    collected = 0;
+
+    ended = false;
+    playing = true;
+
+    setupLevel();
+    startTimers();
+
+    message("GAME STARTED! COLLECT ALL AND ESCAPE!");
+
+    speak("Welcome to Gayuma Marathon! Polyamory versus Monogamy! Good luck!");
+}
+
+// ====================================
+// RESTART LEVEL
+// ====================================
+
+function restartLevel() {
+    initAudio();
+
+    stopMoving();
+
+    clearInterval(enemyTimer);
+    clearInterval(bulletTimer);
+    clearTimeout(transitionTimer);
+
+    if (ended && level === 100) {
+        startGame();
+        return;
+    }
+
+    ended = false;
+    playing = true;
+
+    setupLevel();
+    startTimers();
+
+    speak("Level restarted. Good luck!");
+}
+
+// ====================================
+// HISTORY
+// ====================================
+
+function displayHistory() {
+    const container = document.getElementById("historyList");
+
+    container.innerHTML = "";
+
+    if (history.length === 0) {
+        container.textContent = "No completed levels yet.";
+        return;
+    }
+
+    history.forEach(item => {
+        const entry = document.createElement("div");
+
+        entry.className = "history-entry";
+
+        entry.textContent =
+            "🏆 Level " + item.level +
+            " | 💗 " + item.jowas + " Jowas" +
+            " | ⭐ " + item.points + " Points";
+
+        container.appendChild(entry);
+    });
+}
+
+// ====================================
+// KEYBOARD CONTROLS
+// ====================================
+
+document.addEventListener("keydown",function(event) {
+
+    const keys = {
+        ArrowUp:"up",
+        ArrowDown:"down",
+        ArrowLeft:"left",
+        ArrowRight:"right"
+    };
+
+    if (event.code === "Space") {
+        event.preventDefault();
+
+        if (!event.repeat) {
+            fire();
+        }
+
+        return;
+    }
+
+    if (keys[event.key]) {
+        event.preventDefault();
+        startMoving(keys[event.key]);
+    }
+});
+
+document.addEventListener("keyup",function(event) {
+    if (event.key.startsWith("Arrow")) {
+        stopMoving();
+    }
+});
+
+// INITIAL DISPLAY
+
+displayHistory();
+generateMaze();
+draw();
+updateStats();
+
+</script>
+
+</body>
+</html>
